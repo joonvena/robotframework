@@ -52,4 +52,4 @@ Binary Data
 My Run Tests
     Run Tests    ${EMPTY}    core/binary_data.robot
     ${stderr} =    Get Stderr
-    Should Be Empty    ${stderr}
+    Should Not Be Empty    ${stderr}

@@ -74,16 +74,16 @@ jobs:
           ${{ env.ATEST_PYTHON }} -m pip install -r atest/requirements-run.txt
           ${{ matrix.set_codepage }}
           ${{ matrix.set_display }}
-          ${{ env.ATEST_PYTHON }} atest/run.py --interpreter ${{ env.BASE_PYTHON }} --exclude no-ci ${{ matrix.atest_args }} atest/robot
+          ${{ env.ATEST_PYTHON }} atest/run.py --interpreter ${{ env.BASE_PYTHON }} --exclude no-ci ${{ matrix.atest_args }} atest/robot/core
 
-      - name: Delete output.xml (on Win)
+      - name: Get output.xml location (on Win)
         run: |
           Get-ChildItem atest/results -Include output.xml -Recurse | Remove-Item
         if: always() && runner.os == 'Windows'
 
-      - name: Delete output.xml (on Unix-like)
+      - name: Get output.xml location (on Unix-like)
         run: |
-          find atest/results -type f -name 'output.xml' -exec rm {} +
+          echo "OUTPUT_XML_PATH=$(find atest/results -type f -name 'output.xml' -exec dirname {} \;)" >> $GITHUB_ENV
         if: always() && runner.os != 'Windows'
 
       - name: Archive acceptances test results
@@ -91,6 +91,24 @@ jobs:
         with:
           name: at-results-${{ matrix.python-version }}-${{ matrix.os }}
           path: atest/results
+        if: always() && job.status == 'failure'
+
+      - name: Download reports
+        uses: actions/download-artifact@v1
+        with:
+          name: at-results-${{ matrix.python-version }}-${{ matrix.os }}
+        if: always() && job.status == 'failure'
+
+      - name: DEBUG
+        run: ls -la atest/results && pwd
+
+      - name: Output report
+        uses: joonvena/robotframework-reporter-action@v2.1
+        with:
+            gh_access_token: ${{ secrets.GITHUB_TOKEN }}
+            report_path: ${{ env.OUTPUT_XML_PATH }}
+            show_passed_tests: "false"
+            summary: "true"
         if: always() && job.status == 'failure'
 
       - name: Upload results on *nix
